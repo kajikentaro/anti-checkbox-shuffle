@@ -1,43 +1,40 @@
 'use strict';
 
-// Content script file will run in the context of web page.
-// With content script you can manipulate the web pages using
-// Document Object Model (DOM).
-// You can also pass information to the parent extension.
-
-// We execute this script by making an entry in manifest.json file
-// under `content_scripts` property
-
-// For more information on Content Scripts,
-// See https://developer.chrome.com/extensions/content_scripts
-
-// Log `title` of current active web page
-const pageTitle = document.head.getElementsByTagName('title')[0].innerHTML;
-console.log(
-  `Page title is: '${pageTitle}' - evaluated by Chrome extension's 'contentScript.js' file`
-);
-
-// Communicate with background file by sending a message
-chrome.runtime.sendMessage(
-  {
-    type: 'GREETINGS',
-    payload: {
-      message: 'Hello, my name is Con. I am from ContentScript.',
-    },
-  },
-  response => {
-    console.log(response.message);
-  }
-);
-
-// Listen for message
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.type === 'COUNT') {
-    console.log(`Current count is ${request.payload.count}`);
+  if (request.type === 'write') {
+    chrome.storage.sync.set({'data': output()}, () => {
+    });
+    sendResponse();
   }
-
-  // Send an empty response
-  // See https://github.com/mozilla/webextension-polyfill/issues/130#issuecomment-531531890
+  if (request.type == 'read') {
+    chrome.storage.sync.get(['data'], result => {
+      console.log(result.data);
+      input(result.data);
+    });
+    sendResponse();
+  }
   sendResponse({});
   return true;
 });
+function output(){
+    let inputs = document.getElementsByTagName("input");
+    let checked = [];
+    for(let input of inputs){
+        if(input.type != "radio")continue;
+        if(input.checked)checked.push({name: input.name, value: input.value});
+    }
+    console.log(JSON.stringify(checked))
+    return JSON.stringify(checked);
+}
+function input(str){
+    let data = JSON.parse(str);
+    let inputs = document.getElementsByTagName("input");
+    for(let input of inputs){
+        if(input.type != "radio")continue;
+        for(let d of data){
+            if(input.name == d.name && input.value == d.value){
+                input.checked = true;
+            }
+        }
+    }
+}
